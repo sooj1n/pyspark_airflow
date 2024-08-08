@@ -40,14 +40,13 @@ with DAG(
     start=EmptyOperator(task_id='start')
     end=EmptyOperator(task_id='end')
 
-    def fun_re_partition(ds_nodash):
+    def fun_re_partition(dt):
         #from a.b import c
         #c(ds_nodash)
         
-        print(ds_nodash)
 
         from pyspark_airflow.re import re_partition
-        re_partition(ds_nodash)
+        re_partition(load_dt=dt)
         print("==========================")
 
 
@@ -65,7 +64,7 @@ with DAG(
     join_df = BashOperator(
         task_id="join.df",
         bash_command="""
-        $SPARK_HOME/bin/spark-submit /home/sujin/code/pyspark_airflow/pyspark/sa.py "JOIN_TASK_APP" {{ds_nodash}}
+        $SPARK_HOME/bin/spark-submit /home/sujin/code/pyspark_airflow/pyspark/sp.py "JOIN_TASK_APP" {{ds_nodash}}
         """
     )
 
