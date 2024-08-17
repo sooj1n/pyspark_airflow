@@ -35,42 +35,37 @@ with DAG(
     catchup=True,
     tags=['pyspark','movie'],
 ) as dag:
+	start=EmptyOperator(task_id='start')
+	end=EmptyOperator(task_id='end')
 
+	def fun_re_partition(dt):
+		#from a.b import c
+		#c(ds_nodash)
 
-    start=EmptyOperator(task_id='start')
-    end=EmptyOperator(task_id='end')
+		from pyspark_airflow.re import re_partition
+		re_partition(load_dt=dt)
+		print("==========================")
 
-    def fun_re_partition(dt):
-        #from a.b import c
-        #c(ds_nodash)
-        
+	re_partition = PythonVirtualenvOperator(
+		task_id='re.partition',
+		python_callable=fun_re_partition,
+		requirements=["git+https://github.com/sooj1n/pyspark_airflow.git@0.1.0/re"],
+		system_site_packages=False,
+		op_args=["{{ds_nodash}}"]
+		)
+	# BASH OP 1
+	# $SPARK_HOME/bin/spark-submit /join_df.py "JOIN_TASK_APP" {{ds_nodash}}
+	join_df = BashOperator(
+		task_id="join.df",
+		bash_command="""
+		$SPARK_HOME/bin/spark-submit /Users/sujinya/code/pyspark_airflow/pyspark/join.py "JOIN_TASK_APP" {{ds_nodash}}
+		"""
+		)
+	agg_df = BashOperator(
+		task_id="agg_df",
+		bash_command="""
+		$SPARK_HOME/bin/spark-submit /Users/sujinya/code/pyspark_airflow/pyspark/agg.py {{ds_nodash}}
+		"""
+		)
 
-        from pyspark_airflow.re import re_partition
-        re_partition(load_dt=dt)
-        print("==========================")
-
-
-    
-    re_partition = PythonVirtualenvOperator(
-            task_id='re.partition',
-            python_callable=fun_re_partition,
-            requirements=["git+https://github.com/sooj1n/pyspark_airflow.git@0.1.0/re"],
-            system_site_packages=False,
-            op_args=["{{ds_nodash}}"]
-    )
-
-    # BASH OP 1
-    # $SPARK_HOME/bin/spark-submit /join_df.py "JOIN_TASK_APP" {{ds_nodash}}
-    join_df = BashOperator(
-        task_id="join.df",
-        bash_command="""
-        $SPARK_HOME/bin/spark-submit /home/sujin/code/pyspark_airflow/pyspark/sp.py "JOIN_TASK_APP" {{ds_nodash}}
-        """
-    )
-
-    # BASH OP 2
-
-
-    start >> re_partition >>  join_df  >> end
-    
-
+	start >> re_partition >> join_df >> agg_df >> end

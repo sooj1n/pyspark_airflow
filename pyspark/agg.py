@@ -1,22 +1,37 @@
 from pyspark.sql import SparkSession
 import sys
 
-APP_NAME = sys.argv[1]
-LOAD_DT = sys.argv[2]
+LOAD_DT = sys.argv[1]
 
-spark = SparkSession.builder.appName(APP_NAME).getOrCreate()
+spark = SparkSession.builder.appName("aggDF").getOrCreate()
 
-df_join = spark.read.parquet(f"/home/sujin/data/movie/hive/load_dt={LOAD_DT}")
-df1.createOrReplaceTempView("join_table")
+df1 = spark.read.parquet(f"/Users/sujinya/data/movie_data/hive/load_dt={LOAD_DT}")
+df1.createOrReplaceTempView("oneday_hive")
 
-df_join=spark.sql(f"""
-    SELECT COUNT()
+df_m = spark.sql(f"""
+SELECT
+    sum(salesAmt) as sum_salesAmt,
+    sum(audiCnt) as sum_audiCnt,
+    sum(showCnt) as sum_showCnt,
+    multiMovieYn,
+    '{LOAD_DT}' AS load_dt
+FROM oneday_hive
+GROUP BY multiMovieYn
+""")
 
-        """)
-print('*'*1000)
+df_m.write.mode('append').partitionBy("load_dt").parquet("/Users/sujinya/data/movie_data/sum-multi")
 
-df_join.write.partitionBy("load_dt", "multiMovieYn", "repNationCd").parquet("/home/sujin/data/movie/hive/")
+df_n = spark.sql(f"""
+SELECT
+    sum(salesAmt) as sum_salesAmt,
+    sum(audiCnt) as sum_audiCnt,
+    sum(showCnt) as sum_showCnt,
+    repNationCd,
+    '{LOAD_DT}' AS load_dt
+FROM oneday_hive
+GROUP BY repNationCd
+""")
 
-
+df_n.write.mode('append').partitionBy("load_dt").parquet("/Users/sujinya/data/movie_data/sum_nation")
 
 spark.stop()
